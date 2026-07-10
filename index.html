@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>TRT demo map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+    .app { display: flex; height: 100%; }
+    .sidebar {
+      width: 340px; min-width: 340px; background: #f7f8fa; border-right: 1px solid #e2e5ea;
+      padding: 18px 16px; box-sizing: border-box; overflow-y: auto;
+    }
+    .sidebar h2 { margin: 0 0 14px 0; font-size: 20px; }
+    .card {
+      background: white; border-radius: 12px; padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .name { margin: 0 0 10px 0; font-size: 18px; }
+    .score-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 44px; height: 28px; padding: 0 10px; border-radius: 14px;
+      color: #fff; font-weight: bold; font-size: 14px;
+    }
+    .field { margin: 10px 0; font-size: 14px; line-height: 1.4; }
+    .label { color: #667085; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+    .hint { color: #667085; font-size: 13px; line-height: 1.45; }
+    #map { flex: 1; height: 100%; }
+    .score-marker {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h2>Карточка ТРТ</h2>
+    <div class="card">
+      <div id="trt-empty" class="hint">Нажми на конкретную точку на карте, и здесь откроется карточка выбранной ТРТ.</div>
+      <div id="trt-card" style="display:none;">
+        <h3 id="trt-name" class="name"></h3>
+        <div class="field"><div class="label">Итоговая оценка</div><div id="trt-score"></div></div>
+        <div class="field"><div class="label">Адрес</div><div id="trt-address"></div></div>
+        <div class="field"><div class="label">Менеджер</div><div id="trt-manager"></div></div>
+        <div class="field"><div class="label">Выручка</div><div id="trt-revenue"></div></div>
+        <div class="field"><div class="label">Статус</div><div id="trt-status"></div></div>
+        <div class="field"><div class="label">Комментарий</div><div id="trt-comment"></div></div>
+      </div>
+    </div>
+  </aside>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+  const points = [{"trt_id": 1, "name": "ТРТ 1", "address": "Москва, Тверская улица, 7", "lat": 55.7578, "lon": 37.6137, "score": 92, "manager": "Иванов А.А.", "revenue": "1.8 млн ₽/мес", "color": "#2ecc71"}, {"trt_id": 2, "name": "ТРТ 2", "address": "Москва, Новый Арбат, 15", "lat": 55.7525, "lon": 37.5898, "score": 78, "manager": "Петров И.И.", "revenue": "1.2 млн ₽/мес", "color": "#f1c40f"}, {"trt_id": 3, "name": "ТРТ 3", "address": "Москва, Кутузовский проспект, 19", "lat": 55.7417, "lon": 37.5338, "score": 64, "manager": "Сидоров П.П.", "revenue": "0.9 млн ₽/мес", "color": "#f1c40f"}, {"trt_id": 4, "name": "ТРТ 4", "address": "Москва, Ленинградский проспект, 33", "lat": 55.7908, "lon": 37.5597, "score": 55, "manager": "Кузнецов Д.Д.", "revenue": "0.7 млн ₽/мес", "color": "#e74c3c"}, {"trt_id": 5, "name": "ТРТ 5", "address": "Москва, Проспект Мира, 95", "lat": 55.7972, "lon": 37.6351, "score": 84, "manager": "Смирнов В.В.", "revenue": "1.5 млн ₽/мес", "color": "#2ecc71"}, {"trt_id": 6, "name": "ТРТ 6", "address": "Москва, Варшавское шоссе, 42", "lat": 55.6732, "lon": 37.6241, "score": 47, "manager": "Морозов Е.Е.", "revenue": "0.6 млн ₽/мес", "color": "#e74c3c"}, {"trt_id": 7, "name": "ТРТ 7", "address": "Москва, Люблинская улица, 153", "lat": 55.6579, "lon": 37.7428, "score": 71, "manager": "Волков Н.Н.", "revenue": "1.0 млн ₽/мес", "color": "#f1c40f"}, {"trt_id": 8, "name": "ТРТ 8", "address": "Москва, Щёлковское шоссе, 3", "lat": 55.8097, "lon": 37.7824, "score": 39, "manager": "Федоров С.С.", "revenue": "0.5 млн ₽/мес", "color": "#e74c3c"}, {"trt_id": 9, "name": "ТРТ 9", "address": "Москва, Профсоюзная улица, 56", "lat": 55.6513, "lon": 37.5412, "score": 88, "manager": "Никитин М.М.", "revenue": "1.6 млн ₽/мес", "color": "#2ecc71"}, {"trt_id": 10, "name": "ТРТ 10", "address": "Москва, Мичуринский проспект, 34", "lat": 55.6907, "lon": 37.5002, "score": 61, "manager": "Орлов К.К.", "revenue": "0.8 млн ₽/мес", "color": "#f1c40f"}];
+
+  function colorForScore(score) {
+    if (score >= 80) return '#2ecc71';
+    if (score >= 60) return '#f1c40f';
+    return '#e74c3c';
+  }
+
+  function textStatus(score) {
+    if (score >= 80) return 'Сильная точка';
+    if (score >= 60) return 'Средняя точка';
+    return 'Слабая точка';
+  }
+
+  function updateSidebar(p) {
+    document.getElementById('trt-empty').style.display = 'none';
+    document.getElementById('trt-card').style.display = 'block';
+    document.getElementById('trt-name').textContent = p.name;
+    document.getElementById('trt-score').innerHTML = '<span class="score-badge" style="background:' + colorForScore(p.score) + ';">' + p.score + '</span>';
+    document.getElementById('trt-address').textContent = p.address;
+    document.getElementById('trt-manager').textContent = p.manager || '—';
+    document.getElementById('trt-revenue').textContent = p.revenue || '—';
+    document.getElementById('trt-status').textContent = textStatus(p.score);
+    document.getElementById('trt-comment').textContent = 'Демо-данные. Здесь потом можно показывать 4P, фото, историю визитов и план действий.';
+  }
+
+  const map = L.map('map').setView([55.75, 37.62], 10);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+  map.attributionControl.setPrefix('');
+
+  const clusters = L.markerClusterGroup({
+    zoomToBoundsOnClick: true,
+    spiderfyOnMaxZoom: true,
+    iconCreateFunction: function(cluster) {
+      const markers = cluster.getAllChildMarkers();
+      const avg = markers.reduce((sum, m) => sum + (m.options.score || 0), 0) / markers.length;
+      const color = colorForScore(avg);
+      return L.divIcon({
+        html: '<div style="background:' + color + ';width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 1px 3px rgba(0,0,0,.35)"><span style="color:white;font-weight:bold;">' + markers.length + '</span></div>',
+        className: '',
+        iconSize: [40, 40]
+      });
+    }
+  });
+
+  points.forEach(function(p) {
+    const icon = L.divIcon({
+      className: '',
+      html: '<div class="score-marker" style="background:' + p.color + ';"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+
+    const marker = L.marker([p.lat, p.lon], {icon: icon, score: p.score, title: p.name});
+    marker.on('click', function(e) {
+      updateSidebar(p);
+    });
+    marker.bindTooltip(p.name);
+    clusters.addLayer(marker);
+  });
+
+  map.addLayer(clusters);
+</script>
+</body>
+</html>
